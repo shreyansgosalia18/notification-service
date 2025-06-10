@@ -1,0 +1,83 @@
+spring:
+  # PostgreSQL Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/notification
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver  # Add this
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  # JPA Configuration (if using JPA)
+  jpa:
+    hibernate:
+      ddl-auto: update  # Options: create, update, validate, none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis Configuration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000
+      connect-timeout: 2000
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-consumer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    topics:
+      email: notification-email-topic
+      sms: notification-sms-topic
+      push: notification-push-topic
+      partition-count: 3
+      replication-factor: 1
+    listener:
+      concurrency: 1
+      type: single
+
+  flyway:
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# Server port
+server:
+  port: 8080
+  error:
+    include-message: always
+
+# Logging Configuratio
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    com.karboncard.assignment.notificationservice: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+notification:
+  retry:
+    max-attempts: 5
+    initial-interval: 1000
+    multiplier: 2
+    max-interval: 30000
+  rate-limit:
+    user:
+      max-requests: 5
+      time-window: 60  # seconds
+    template:
+      max-requests: 2
+      time-window: 300  # seconds

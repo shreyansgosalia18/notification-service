@@ -1,0 +1,60 @@
+src/main/java/com/karboncard/assignment/notificationservice/
+├── NotificationServiceApplication.java
+├── config/
+│   ├── KafkaConfig.java                  # Message queue configuration
+│   ├── AsyncConfig.java                  # Thread pool configuration
+│   ├── RetryConfig.java                  # Exponential backoff configuration
+│   ├── RateLimitConfig.java              # Rate limiting configuration
+│   └── SwaggerConfig.java                # API documentation
+├── controller/
+│   └── NotificationController.java       # REST API endpoints
+├── model/
+│   ├── enums/
+│   │   ├── NotificationType.java         # SMS, EMAIL, PUSH
+│   │   ├── NotificationPriority.java     # HIGH, MEDIUM, LOW
+│   │   └── NotificationStatus.java       # PENDING, SENT, FAILED, RETRYING, PERMANENT_FAILURE
+│   ├── dto/
+│   │   ├── request/
+│   │   │   └── NotificationRequestDTO.java   # With Builder pattern
+│   │   └── response/
+│   │       └── NotificationResponseDTO.java  # With Builder pattern
+│   └── entity/
+│       └── Notification.java             # Database entity
+├── repository/
+│   └── NotificationRepository.java       # Data access layer
+├── service/
+│   ├── NotificationService.java          # Service interface
+│   ├── impl/
+│   │   └── NotificationServiceImpl.java  # Service implementation
+│   ├── RateLimitingService.java          # Rate limiting interface
+│   ├── impl/
+│   │   └── RedisRateLimitingService.java # Rate limiting implementation
+│   ├── KafkaProducerService.java         # Message producer interface
+│   ├── impl/
+│   │   └── KafkaProducerServiceImpl.java # Message producer implementation
+│   ├── provider/                         # Strategy Pattern
+│   │   ├── NotificationProvider.java     # Provider interface
+│   │   ├── impl/
+│   │   │   ├── EmailNotificationProvider.java # Email implementation
+│   │   │   ├── SmsNotificationProvider.java   # SMS implementation
+│   │   │   └── PushNotificationProvider.java  # Push implementation
+│   └── factory/                          # Factory Pattern
+│       └── NotificationProviderFactory.java
+├── worker/
+│   ├── NotificationConsumer.java         # Consumer interface
+│   ├── impl/
+│   │   ├── EmailNotificationConsumer.java   # Email consumer
+│   │   ├── SmsNotificationConsumer.java     # SMS consumer
+│   │   └── PushNotificationConsumer.java    # Push consumer
+│   └── adapter/                          # Adapter Pattern
+│       ├── ExternalProviderAdapter.java
+│       └── impl/
+│           ├── TwilioSmsAdapter.java
+│           ├── SendGridEmailAdapter.java
+│           └── FirebasePushAdapter.java
+├── exception/
+│   ├── RateLimitExceededException.java   # Rate limit exception
+│   └── GlobalExceptionHandler.java       # Exception handling
+└── util/
+    ├── IdempotencyUtil.java              # Exactly-once delivery
+    └── MetricsUtil.java                  # Metrics helper

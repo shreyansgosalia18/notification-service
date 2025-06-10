@@ -1,0 +1,98 @@
+Senior Backend Engineer Take-Home Assignment: Scalable Notification Service
+Objective: Design and implement a backend service responsible for sending various types of notifications (e.g., SMS, Email, Push) to users. The service must be highly available, scalable, resilient, and include robust rate limiting and delivery guarantee mechanisms.
+Context: Imagine you're building a core service for a large-scale application. Users need to receive timely notifications for various events (e.g., "Order Shipped," "Password Reset," "New Message"). Different notification types might have different delivery mechanisms and constraints.
+
+Part 1: Core Service Implementation (60% of total)
+Implement the core API and worker components for the notification service.
+Requirements:
+Notification Request API:
+
+
+Expose a RESTful API endpoint (e.g., POST /notifications) to receive notification requests.
+A notification request should include:
+userId: (String) The ID of the recipient user.
+type: (Enum: SMS, EMAIL, PUSH) The type of notification.
+templateId: (String) A unique identifier for the notification template (e.g., ORDER_SHIPPED_CONFIRMATION, PASSWORD_RESET).
+templateParams: (JSON Object) Key-value pairs for populating the template (e.g., {"orderId": "ABC123", "itemName": "Laptop"}).
+priority: (Enum: HIGH, MEDIUM, LOW, default MEDIUM) Indicates delivery urgency.
+correlationId: (Optional String) A unique ID for tracking related notifications.
+The API should respond quickly (asynchronously process requests).
+Perform basic validation on incoming requests.
+Asynchronous Processing:
+
+
+Do not send notifications synchronously within the API request.
+Use a message queue (e.g., RabbitMQ, Kafka, AWS SQS/Azure Service Bus/GCP Pub/Sub – you can mock this or use a simple in-memory queue if setting up a real one is too complex for a take-home, but state your choice and why).
+Enqueue notification requests for processing by worker components.
+Worker Components:
+
+
+Implement worker processes that consume messages from the queue.
+Each worker should be responsible for processing notification requests of a specific type (e.g., one worker for SMS, one for Email, one for Push). This implies some form of message routing.
+Simulate External Delivery: For each notification type, simulate interaction with an external provider (e.g., SmsGateway.send(to, message), EmailService.send(to, subject, body)). You don't need to integrate with real APIs; simple logging to console or a mock object is sufficient.
+Error Handling & Retries: Implement a robust retry mechanism for transient delivery failures (e.g., exponential backoff). After a configurable number of retries, move the message to a Dead-Letter Queue (DLQ) or mark it as permanently failed.
+Database Integration:
+
+
+Use a database (SQL or NoSQL, state your choice and schema) to store the state of each notification request.
+Store at least: notificationId, userId, type, templateId, status (e.g., PENDING, SENT, FAILED, RETRYING), createdAt, lastAttemptedAt, deliveryAttempts, errorMessage (if failed).
+Ensure atomicity for status updates.
+Technology Stack:
+
+
+Choose a backend language and framework you are proficient in (e.g., Java/Spring Boot, Python/Django/FastAPI, Go/Gin, Node.js/Express).
+Clearly state your choices and justify any significant decisions.
+
+Part 2: Advanced Features & Resilience (40% of total)
+Implement features that demonstrate senior-level understanding of distributed systems.
+Rate Limiting (Per User & Per Notification Type):
+
+
+Implement a distributed rate limiter for incoming notification requests.
+The service should enforce two types of limits:
+Per User: A user cannot receive more than X notifications of any type within Y minutes (e.g., 5 notifications per user per 1 minute).
+Per Template Type: A specific templateId (e.g., PASSWORD_RESET) cannot be sent to the same userId more than A times within B minutes (e.g., 2 password resets per user per 5 minutes).
+If a request exceeds a limit, it should be rejected immediately (with an appropriate HTTP status code, e.g., 429 Too Many Requests) or gracefully handled (e.g., silently dropped if not critical, or queued for later if allowed). State your choice and reasoning.
+You can use an in-memory solution for the take-home, but explain how you would make it truly distributed (e.g., Redis, a distributed counter service).
+Delivery Guarantees (At-Least-Once / Exactly-Once Considerations):
+
+
+Discuss how you've designed your system to achieve at-least-once delivery of notifications.
+Explain the challenges of exactly-once delivery in your design and any trade-offs you've made or how you would approach it (e.g., idempotency keys).
+Demonstrate idempotency in your worker design for simulating external calls (i.e., calling the external delivery provider multiple times with the same request should not cause duplicate actual notifications, if possible).
+Observability:
+
+
+Implement basic logging for critical events (request received, message enqueued, message consumed, delivery success/failure, retry attempts).
+Mention how you would add metrics (e.g., Prometheus/Grafana) for monitoring (e.g., notification send rates, error rates, queue depths, latency). You don't need to integrate a full monitoring stack, but describe your approach.
+
+Submission Guidelines & Evaluation Criteria:
+Submission:
+A Git repository (e.g., GitHub, GitLab, Bitbucket) containing all source code.
+A README.md file at the root of the repository that includes:
+Setup Instructions: Clear instructions on how to build, run, and test the application (including any dependencies).
+Design Decisions & Justifications: A detailed explanation of your architectural choices (microservices vs. monolithic, database choice, queueing system, rate limiting approach, retry strategy, etc.) and why you made them.
+API Documentation: Clear examples of how to interact with your API endpoints.
+Trade-offs: Any significant trade-offs you made due to time constraints or design choices.
+Future Improvements: Ideas for how to further improve the service (e.g., more notification types, admin panel, analytics, security).
+Test Cases: List of manual test cases to verify functionality.
+Evaluation Criteria:
+Correctness and Completeness (40%): Does the solution meet all specified requirements?
+Code Quality & Readability (20%): Clean code, good naming conventions, appropriate use of language features, clear separation of concerns.
+Architectural Design (20%): Scalability, fault tolerance, adherence to best practices, appropriate use of design patterns, justification of choices.
+Testing & Reliability (10%): Unit tests, integration tests, error handling, retry mechanisms.
+Documentation & Communication (10%): Clear README.md, well-explained design decisions, easy-to-follow setup instructions.
+Bonus Points: Dockerization, basic CI/CD pipeline definition (e.g., a .gitlab-ci.yml or .github/workflows/ file).
+Time Estimate: This assignment is designed to take approximately 8-12 hours for an experienced senior engineer. Please manage your time accordingly. If you cannot complete all parts, prioritize Part 1 and the most critical features from Part 2, and document what you would have done if you had more time.
+
+Why this is a "Hard" assignment for a Senior Engineer:
+Distributed Systems Thinking: Requires handling asynchronous communication, message queues, and distributed state (for rate limiting, delivery guarantees).
+Concurrency & Reliability: Forces consideration of race conditions, retries, idempotency, and error handling in a distributed context.
+Architectural Choices: Candidates must make and justify decisions about database types, queueing mechanisms, and service decomposition.
+Scalability: Implies thinking about how the system will handle high load (rate limiting, asynchronous processing).
+Observability: Requires considering how the system will be monitored and debugged in production.
+Rate Limiting Complexity: Implementing a distributed rate limiter, especially with multiple dimensions (per user, per template), is non-trivial.
+Delivery Guarantees: Demonstrating understanding of 'at-least-once' and 'exactly-once' and designing for it.
+Self-Direction: Minimal hand-holding; the candidate needs to design and implement the solution end-to-end.
+Good luck!
+
