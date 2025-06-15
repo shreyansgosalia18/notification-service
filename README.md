@@ -41,12 +41,20 @@ Build a core service responsible for delivering various notification types (SMS,
 
 ## Tech Stack & Design Choices
 
-- **Language/Framework**: Java 17, Spring Boot
-- **Database**: Chosen as per deployment (e.g., PostgreSQL/MySQL/NoSQL); entity-centric design allows easy switching.
-- **Queue**: Kafka for message brokering, can be mocked for demo/dev.
-- **Distributed Cache**: Redis for rate limiting and idempotency.
-- **Design Patterns**: Strategy (notification provider), Factory (provider selection), Adapter (external provider integration).
-- **Documentation**: Swagger/OpenAPI via SpringFox.
+- **Language/Platform:** Java 21, Spring Boot 3.4.6
+- **Core Frameworks:** Spring Web, Spring Data JPA, Spring Data Redis, Spring Kafka, Spring Boot Actuator, Spring Boot Validation
+- **Resiliency:** Resilience4j for retries, circuit breakers, and robust error handling
+- **Database:** PostgreSQL (production), Testcontainers (integration tests)
+- **Queue:** Kafka for asynchronous processing and decoupling between API and workers
+- **Caching/Rate Limiting:** Redis for distributed caching and rate limiting
+- **API Documentation:** OpenAPI/Swagger via Springdoc
+- **Metrics/Monitoring:** Micrometer with Prometheus; Spring Boot Actuator for health and metrics endpoints
+- **Migrations:** Flyway for database version control
+- **Containerization:** Docker images built using Jib plugin for seamless CI/CD
+- **Testing:** JUnit 5, Spring Boot test starter, Testcontainers (Kafka, PostgreSQL)
+- **Utilities:** Lombok for boilerplate reduction, Hibernate Types for advanced DB mapping
+
+All dependencies and plugins are managed via Gradle for consistent builds and reproducibility.
 
 ---
 
@@ -54,65 +62,174 @@ Build a core service responsible for delivering various notification types (SMS,
 
 ```
 src/main/java/com/karboncard/assignment/notificationservice/
-├── NotificationServiceApplication.java
-├── config/
-│   ├── KafkaConfig.java
-│   ├── AsyncConfig.java
-│   ├── RetryConfig.java
-│   ├── RateLimitConfig.java
-│   └── SwaggerConfig.java
+├── NotificationServiceApplication.java            # Main Spring Boot application
+├── config/                                       # Application and framework-level configs
+│   ├── KafkaConfig.java                          # Message queue configuration
+│   ├── AsyncConfig.java                          # Thread pool/executor configuration
+│   ├── RetryConfig.java                          # Exponential backoff and retry settings
+│   ├── RateLimitConfig.java                      # Distributed rate limiting setup
+│   └── SwaggerConfig.java                        # API documentation config (OpenAPI)
 ├── controller/
-│   └── NotificationController.java
+│   └── NotificationController.java               # REST API endpoints for notifications
 ├── model/
-│   ├── enums/
+│   ├── enums/                                    # Enum types for notification
+│   │   ├── NotificationType.java                 # SMS, EMAIL, PUSH
+│   │   ├── NotificationPriority.java             # HIGH, MEDIUM, LOW
+│   │   └── NotificationStatus.java               # State: PENDING, SENT, FAILED, etc.
 │   ├── dto/
+│   │   ├── request/
+│   │   │   └── NotificationRequestDTO.java       # Incoming request DTO (Builder pattern)
+│   │   └── response/
+│   │       └── NotificationResponseDTO.java      # API response DTO (Builder pattern)
 │   └── entity/
+│       └── Notification.java                     # JPA entity for database persistence
 ├── repository/
+│   └── NotificationRepository.java               # Data access repository
 ├── service/
-│   ├── provider/
-│   ├── factory/
+│   ├── NotificationService.java                  # Service interface
 │   ├── impl/
+│   │   └── NotificationServiceImpl.java          # Service implementation
+│   ├── RateLimitingService.java                  # Rate limiting interface
+│   ├── impl/
+│   │   └── RedisRateLimitingService.java         # Redis-backed rate limiting
+│   ├── KafkaProducerService.java                 # Message producer interface
+│   ├── impl/
+│   │   └── KafkaProducerServiceImpl.java         # Kafka producer implementation
+│   ├── provider/                                # Strategy Pattern for notification methods
+│   │   ├── NotificationProvider.java             # Provider interface
+│   │   ├── impl/
+│   │   │   ├── EmailNotificationProvider.java    # Email notification logic
+│   │   │   ├── SmsNotificationProvider.java      # SMS notification logic
+│   │   │   └── PushNotificationProvider.java     # Push notification logic
+│   └── factory/
+│       └── NotificationProviderFactory.java      # Factory Pattern for provider selection
 ├── worker/
+│   ├── NotificationConsumer.java                 # Queue consumer interface
 │   ├── impl/
-│   └── adapter/
+│   │   ├── EmailNotificationConsumer.java        # Email worker
+│   │   ├── SmsNotificationConsumer.java          # SMS worker
+│   │   └── PushNotificationConsumer.java         # Push worker
+│   └── adapter/                                 # Adapter Pattern for 3rd-party integrations
+│       ├── ExternalProviderAdapter.java
+│       └── impl/
+│           ├── TwilioSmsAdapter.java
+│           ├── SendGridEmailAdapter.java
+│           └── FirebasePushAdapter.java
 ├── exception/
-├── util/
+│   ├── RateLimitExceededException.java           # Exception for rate limit violation
+│   └── GlobalExceptionHandler.java               # Centralized error handler
+└── util/
+    ├── IdempotencyUtil.java                      # Exactly-once delivery helper
+    └── MetricsUtil.java                          # Metrics and observability helpers
 ```
-
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
 
-- Java 17+
-- Maven/Gradle
-- Kafka broker (can be run via Docker)
-- Redis server (can be run via Docker)
-- Database (e.g., PostgreSQL, MySQL)
-- (Optional for dev/demo) Docker Compose for easy orchestration
+- **Java 21** (ensure `JAVA_HOME` points to JDK 21)
+- **Docker & Docker Compose** (for running dependencies)
+- **Gradle** (or use the provided Gradle wrapper `./gradlew`)
+- **Git**
 
-### Steps
+---
 
-1. **Clone the repository**  
-   `git clone https://github.com/shreyansgosalia18/notification-service.git`
+### 1. Clone the Repository
 
-2. **Configure environment variables**  
-   Update `src/main/resources/application.yml` for DB, Kafka, and Redis connection details.
+```bash
+git clone https://github.com/shreyansgosalia18/notification-service.git
+cd notification-service
+```
 
-3. **Run dependencies (if using Docker Compose)**  
-   ```
-   docker-compose up -d
-   ```
+---
 
-4. **Build and run the application**
-   ```
-   ./mvnw spring-boot:run
-   ```
+### 2. Start Dependencies (PostgreSQL, Redis, Kafka, Zookeeper)
 
-5. **Access Swagger UI**  
-   Visit [http://localhost:8080/swagger-ui/](http://localhost:8080/swagger-ui/) for API docs.
+You can start all dependencies with Docker Compose:
 
+```bash
+docker-compose up -d
+```
+
+This will spin up:
+- PostgreSQL (database)
+- Redis (for rate limiting/idempotency)
+- Kafka & Zookeeper (for asynchronous messaging)
+
+> Default ports exposed: PostgreSQL (5432), Redis (6379), Kafka (9092)
+
+---
+
+### 3. Configure Application Properties
+
+Edit `src/main/resources/application.yml` as needed to match your environment (DB/Kafka/Redis connection details).  
+Defaults match the `docker-compose.yml` configuration.
+
+---
+
+### 4. Run Database Migrations
+
+Flyway migrations will run automatically on application startup.
+
+---
+
+### 5. Build and Run the Application
+
+**Using Gradle Wrapper:**
+
+```bash
+./gradlew bootRun
+```
+
+Or, to build a JAR:
+
+```bash
+./gradlew clean build
+java -jar build/libs/notification-service.jar
+```
+
+---
+
+### 6. Access the API Documentation
+
+Visit [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) or [http://localhost:8080/swagger-ui/](http://localhost:8080/swagger-ui/) for interactive API documentation.
+
+---
+
+### 7. Running Tests
+
+```bash
+./gradlew test
+```
+
+Integration tests use Testcontainers to spin up ephemeral PostgreSQL and Kafka instances.
+
+---
+
+### 8. Build a Docker Image (Optional)
+
+To build a Docker image using Jib:
+
+```bash
+./gradlew jibDockerBuild
+```
+
+This will produce a local Docker image named `notification-service:0.0.1-SNAPSHOT`.
+
+---
+
+### 9. Stopping Services
+
+To stop and remove all Docker containers:
+
+```bash
+docker-compose down
+```
+
+---
+
+**You're ready to develop and test the Notification Service!**
 ---
 
 ## API Documentation
