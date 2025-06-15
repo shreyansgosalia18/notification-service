@@ -142,6 +142,13 @@ public class KafkaProducerServiceImpl implements KafkaProducerService {
     public void sendNotification(Notification notification) {
         boolean success = false;
 
+        if (notification.getType() == null) {
+            log.error("Notification type is null for notification {}", notification.getId());
+            metricsUtil.incrementCounter("notification.kafka.failed",
+                    Map.of("type", "NULL"));
+            return;
+        }
+
         switch (notification.getType()) {
             case EMAIL:
                 success = sendToEmailTopic(notification);
@@ -154,6 +161,8 @@ public class KafkaProducerServiceImpl implements KafkaProducerService {
                 break;
             default:
                 log.error("Unknown notification type: {}", notification.getType());
+                metricsUtil.incrementCounter("notification.kafka.failed",
+                        Map.of("type", notification.getType() != null ? notification.getType().toString() : "UNKNOWN"));
                 return;
         }
 
