@@ -160,9 +160,12 @@ public class NotificationController {
             Notification notification = notificationOpt.get();
             NotificationResponseDTO responseDTO = NotificationResponseDTO.builder()
                     .id(notification.getId())
+                    .userId(notification.getUserId())
+                    .type(notification.getType())
+                    .status(notification.getStatus())
+                    .createdAt(notification.getCreatedAt())
                     .success(true)
                     .message("Notification found")
-                    .status(notification.getStatus())
                     .build();
             return ResponseEntity.ok(responseDTO);
         } else {
