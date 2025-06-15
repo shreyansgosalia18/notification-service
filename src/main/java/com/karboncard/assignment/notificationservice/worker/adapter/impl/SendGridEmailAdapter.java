@@ -11,29 +11,31 @@ public class SendGridEmailAdapter implements ExternalProviderAdapter {
 
     @Override
     public boolean sendNotification(Notification notification) {
-        // Extract email from templateParams
+        // MOCK: No real email will be sent.
         String emailAddress = notification.getTemplateParams().containsKey("email")
                 ? notification.getTemplateParams().get("email").toString()
                 : notification.getUserId() + "@example.com"; // Fallback
 
-        // Extract subject from templateParams or create default
         String subject = notification.getTemplateParams().containsKey("subject")
                 ? notification.getTemplateParams().get("subject").toString()
                 : "Notification: " + notification.getTemplateId();
 
-        // Extract content from templateParams
         String content = notification.getTemplateParams().containsKey("content")
                 ? notification.getTemplateParams().get("content").toString()
                 : "Notification details for template: " + notification.getTemplateId();
 
-        log.info("Sending Email via SendGrid to {}, Subject: {}", emailAddress, subject);
+        log.info("MOCK: Sending Email via SendGrid to {}, Subject: {} (notificationId={}, templateParams={})",
+                emailAddress, subject, notification.getId(), notification.getTemplateParams());
 
-        // Simulate occasional failures (15% chance)
-        boolean success = Math.random() > 0.15;
-        if (!success) {
-            log.warn("Failed to send Email to {}", emailAddress);
+        if (!notification.getTemplateParams().containsKey("email")) {
+            log.warn("MOCK: email missing in templateParams, used userId as fallback for notificationId={}", notification.getId());
         }
 
+        // Simulate occasional failure for assignment (15% chance)
+        boolean success = Math.random() > 0.15;
+        if (!success) {
+            log.warn("MOCK: Simulated failure sending Email to {} (notificationId={})", emailAddress, notification.getId());
+        }
         return success;
     }
 }

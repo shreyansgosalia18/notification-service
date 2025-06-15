@@ -1,5 +1,6 @@
 package com.karboncard.assignment.notificationservice.service;
 
+import com.karboncard.assignment.notificationservice.exception.RateLimitExceededException;
 import com.karboncard.assignment.notificationservice.model.dto.request.NotificationRequestDTO;
 import com.karboncard.assignment.notificationservice.model.dto.response.NotificationResponseDTO;
 import com.karboncard.assignment.notificationservice.model.entity.Notification;
@@ -16,7 +17,8 @@ public interface NotificationService {
      * @param requestDTO The notification request
      * @return Response containing status and notification ID
      */
-    NotificationResponseDTO processNotification(NotificationRequestDTO requestDTO);
+    NotificationResponseDTO processNotification(NotificationRequestDTO requestDTO)
+            throws RateLimitExceededException;
 
     /**
      * Retrieves a notification by ID

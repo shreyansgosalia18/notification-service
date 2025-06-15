@@ -3,6 +3,7 @@ package com.karboncard.assignment.notificationservice.service.provider.impl;
 import com.karboncard.assignment.notificationservice.model.dto.request.NotificationRequestDTO;
 import com.karboncard.assignment.notificationservice.model.entity.Notification;
 import com.karboncard.assignment.notificationservice.model.enums.NotificationPriority;
+import com.karboncard.assignment.notificationservice.model.enums.NotificationStatus;
 import com.karboncard.assignment.notificationservice.model.enums.NotificationType;
 import com.karboncard.assignment.notificationservice.service.KafkaProducerService;
 import com.karboncard.assignment.notificationservice.service.provider.NotificationProvider;
@@ -31,7 +32,10 @@ public class EmailNotificationProvider implements NotificationProvider {
         // Get email address from templateParams
         Map<String, Object> params = notification.getTemplateParams();
         if (params == null || !params.containsKey("email")) {
-            log.error("Missing email address in templateParams for notification {}", notification.getId());
+            String msg = String.format("Missing email address in templateParams for notification %s. templateParams: %s", notification.getId(), params);
+            log.error(msg);
+            notification.setStatus(NotificationStatus.PERMANENT_FAILURE);
+            notification.setErrorMessage(msg);
             return false;
         }
 
@@ -39,7 +43,10 @@ public class EmailNotificationProvider implements NotificationProvider {
 
         // Validate email address
         if (emailAddress == null || !Pattern.matches(EMAIL_REGEX, emailAddress)) {
-            log.error("Invalid email address format for notification {}", notification.getId());
+            String msg = String.format("Invalid email address format for notification %s. Provided: %s", notification.getId(), emailAddress);
+            log.error(msg);
+            notification.setStatus(NotificationStatus.PERMANENT_FAILURE);
+            notification.setErrorMessage(msg);
             return false;
         }
 

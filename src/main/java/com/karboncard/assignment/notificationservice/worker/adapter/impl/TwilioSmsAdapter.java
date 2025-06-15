@@ -11,24 +11,27 @@ public class TwilioSmsAdapter implements ExternalProviderAdapter {
 
     @Override
     public boolean sendNotification(Notification notification) {
-        // Get phone number from templateParams or use userId as fallback
+        // MOCK: No real SMS will be sent.
         String phoneNumber = notification.getTemplateParams().containsKey("phoneNumber")
                 ? notification.getTemplateParams().get("phoneNumber").toString()
-                : notification.getUserId(); // Assuming userId could be phone number
+                : notification.getUserId(); // Fallback
 
-        // Get message content from templateParams
         String message = notification.getTemplateParams().containsKey("content")
                 ? notification.getTemplateParams().get("content").toString()
                 : "Notification for template: " + notification.getTemplateId();
 
-        log.info("Sending SMS via Twilio to {}: {}", phoneNumber, message);
+        log.info("MOCK: Sending SMS via Twilio to {}: {} (notificationId={}, templateParams={})",
+                phoneNumber, message, notification.getId(), notification.getTemplateParams());
 
-        // Simulate occasional failures (20% chance)
-        boolean success = Math.random() > 0.2;
-        if (!success) {
-            log.warn("Failed to send SMS to {}", phoneNumber);
+        if (!notification.getTemplateParams().containsKey("phoneNumber")) {
+            log.warn("MOCK: phoneNumber missing in templateParams, used userId as fallback for notificationId={}", notification.getId());
         }
 
+        // Simulate occasional failure for assignment (20% chance)
+        boolean success = Math.random() > 0.2;
+        if (!success) {
+            log.warn("MOCK: Simulated failure sending SMS to {} (notificationId={})", phoneNumber, notification.getId());
+        }
         return success;
     }
 }

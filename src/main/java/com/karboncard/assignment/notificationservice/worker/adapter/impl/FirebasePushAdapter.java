@@ -11,29 +11,31 @@ public class FirebasePushAdapter implements ExternalProviderAdapter {
 
     @Override
     public boolean sendNotification(Notification notification) {
-        // Extract device token from templateParams
+        // MOCK: No real push notification will be sent.
         String deviceToken = notification.getTemplateParams().containsKey("deviceToken")
                 ? notification.getTemplateParams().get("deviceToken").toString()
-                : notification.getUserId() + "_device"; // Fallback
+                : notification.getUserId() + "_device";
 
-        // Extract title from templateParams
         String title = notification.getTemplateParams().containsKey("title")
                 ? notification.getTemplateParams().get("title").toString()
                 : "Notification: " + notification.getTemplateId();
 
-        // Extract body from templateParams
         String body = notification.getTemplateParams().containsKey("body")
                 ? notification.getTemplateParams().get("body").toString()
                 : "You have a new notification";
 
-        log.info("Sending Push notification via Firebase to device {}: {}", deviceToken, title);
+        log.info("MOCK: Sending Push notification via Firebase to device {}: {} (notificationId={}, templateParams={})",
+                deviceToken, title, notification.getId(), notification.getTemplateParams());
 
-        // Simulate occasional failures (10% chance)
-        boolean success = Math.random() > 0.1;
-        if (!success) {
-            log.warn("Failed to send Push notification to device {}", deviceToken);
+        if (!notification.getTemplateParams().containsKey("deviceToken")) {
+            log.warn("MOCK: deviceToken missing in templateParams, used fallback for notificationId={}", notification.getId());
         }
 
+        // Simulate occasional failure for assignment (10% chance)
+        boolean success = Math.random() > 0.1;
+        if (!success) {
+            log.warn("MOCK: Simulated failure sending Push notification to device {} (notificationId={})", deviceToken, notification.getId());
+        }
         return success;
     }
 }

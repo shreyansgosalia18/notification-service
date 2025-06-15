@@ -53,7 +53,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
             HttpHeaders headers,
-            org.springframework.http.HttpStatusCode status, // Changed from HttpStatus to HttpStatusCode
+            org.springframework.http.HttpStatusCode status,
             WebRequest request) {
 
         log.warn("Validation error in request: {}", ex.getMessage());

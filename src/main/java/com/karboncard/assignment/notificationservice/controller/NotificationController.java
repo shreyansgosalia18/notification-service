@@ -4,6 +4,7 @@ import com.karboncard.assignment.notificationservice.exception.RateLimitExceeded
 import com.karboncard.assignment.notificationservice.model.dto.request.NotificationRequestDTO;
 import com.karboncard.assignment.notificationservice.model.dto.response.NotificationResponseDTO;
 import com.karboncard.assignment.notificationservice.model.entity.Notification;
+import com.karboncard.assignment.notificationservice.model.enums.NotificationType;
 import com.karboncard.assignment.notificationservice.service.NotificationService;
 import com.karboncard.assignment.notificationservice.service.RateLimitingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,6 +40,7 @@ public class NotificationController {
             @ApiResponse(responseCode = "202", description = "Notification accepted for processing",
                     content = @Content(schema = @Schema(implementation = NotificationResponseDTO.class))),
             @ApiResponse(responseCode = "400", description = "Invalid input"),
+            @ApiResponse(responseCode = "409", description = "Duplicate request"),
             @ApiResponse(responseCode = "429", description = "Rate limit exceeded")
     })
     public ResponseEntity<NotificationResponseDTO> sendNotification(
@@ -46,35 +49,85 @@ public class NotificationController {
         log.info("Received notification request for userId: {}, type: {}, templateId: {}",
                 requestDTO.getUserId(), requestDTO.getType(), requestDTO.getTemplateId());
 
-        // Check rate limits
+        // ==== EARLY VALIDATION OF REQUIRED FIELDS ====
+        if (requestDTO.getType() == null) {
+            return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                    .success(false)
+                    .message("Missing 'type' in request.")
+                    .build());
+        }
+        Map<String, Object> templateParams = requestDTO.getTemplateParams();
+        if (templateParams == null) {
+            return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                    .success(false)
+                    .message("Missing 'templateParams' in request.")
+                    .build());
+        }
+        NotificationType type = requestDTO.getType();
+        switch (type) {
+            case EMAIL:
+                if (!templateParams.containsKey("email") ||
+                        templateParams.get("email") == null ||
+                        templateParams.get("email").toString().isBlank()) {
+                    return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                            .success(false)
+                            .message("Missing required field 'email' for EMAIL notification in template_params.")
+                            .build());
+                }
+                break;
+            case SMS:
+                if (!templateParams.containsKey("phoneNumber") ||
+                        templateParams.get("phoneNumber") == null ||
+                        templateParams.get("phoneNumber").toString().isBlank()) {
+                    return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                            .success(false)
+                            .message("Missing required field 'phoneNumber' for SMS notification in template_params.")
+                            .build());
+                }
+                break;
+            case PUSH:
+                if (!templateParams.containsKey("deviceToken") ||
+                        templateParams.get("deviceToken") == null ||
+                        templateParams.get("deviceToken").toString().isBlank()) {
+                    return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                            .success(false)
+                            .message("Missing required field 'deviceToken' for PUSH notification in template_params.")
+                            .build());
+                }
+                break;
+            default:
+                return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                        .success(false)
+                        .message("Unknown notification type.")
+                        .build());
+        }
+        // ==== END EARLY VALIDATION ====
+
+        NotificationResponseDTO responseDTO;
         try {
-            rateLimitingService.checkUserRateLimit(requestDTO.getUserId());
+            responseDTO = notificationService.processNotification(requestDTO);
         } catch (RateLimitExceededException e) {
             log.warn("Rate limit exceeded for userId: {}, templateId: {}",
                     requestDTO.getUserId(), requestDTO.getTemplateId());
 
+            NotificationResponseDTO rateLimitDTO = NotificationResponseDTO.builder()
+                    .id(requestDTO.getCorrelationId() != null ?
+                            requestDTO.getCorrelationId() : UUID.randomUUID().toString())
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
+
             return ResponseEntity
                     .status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(NotificationResponseDTO.builder()
-                            .success(false)
-                            .message("Rate limit exceeded. Try again later.")
-                            .build());
+                    .body(rateLimitDTO);
         }
 
-        // Generate unique notification ID if not provided
-        String notificationId = requestDTO.getCorrelationId() != null ?
-                requestDTO.getCorrelationId() : UUID.randomUUID().toString();
+        // Duplicate detection (robust: prefer flag in DTO, but fallback to message check)
+        if ("Duplicate request".equals(responseDTO.getMessage())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(responseDTO);
+        }
 
-        // Process notification asynchronously
-        notificationService.processNotification(requestDTO);
-
-        // Return immediate response
-        NotificationResponseDTO responseDTO = NotificationResponseDTO.builder()
-                .id(notificationId)
-                .success(true)
-                .message("Notification queued successfully")
-                .build();
-
+        // Otherwise, normal (new) notification
         return ResponseEntity.accepted().body(responseDTO);
     }
 

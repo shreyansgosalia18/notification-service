@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +43,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public NotificationResponseDTO processNotification(NotificationRequestDTO requestDTO) {
+    public NotificationResponseDTO processNotification(NotificationRequestDTO requestDTO) throws RateLimitExceededException {
         log.info("Processing notification request for user: {}, type: {}",
                 requestDTO.getUserId(), requestDTO.getType());
 
@@ -62,19 +63,27 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         // Apply rate limits
-        try {
-            // Check rate limit per user
-            rateLimitingService.checkUserRateLimit(requestDTO.getUserId());
+//        try {
+//            // Check rate limit per user
+//            rateLimitingService.checkUserRateLimit(requestDTO.getUserId());
+//
+//            // Check rate limit per template type for this user
+//            rateLimitingService.checkTemplateRateLimit(requestDTO.getUserId(), requestDTO.getTemplateId());
+//        } catch (RateLimitExceededException e) {
+//            log.warn("Rate limit exceeded: {}", e.getMessage());
+//            return NotificationResponseDTO.builder()
+//                    .success(false)
+//                    .message(e.getMessage())
+//                    .build();
+//        }
 
-            // Check rate limit per template type for this user
-            rateLimitingService.checkTemplateRateLimit(requestDTO.getUserId(), requestDTO.getTemplateId());
-        } catch (RateLimitExceededException e) {
-            log.warn("Rate limit exceeded: {}", e.getMessage());
-            return NotificationResponseDTO.builder()
-                    .success(false)
-                    .message(e.getMessage())
-                    .build();
-        }
+        // Apply rate limits
+        rateLimitingService.checkUserRateLimit(requestDTO.getUserId());
+        rateLimitingService.checkTemplateRateLimit(requestDTO.getUserId(), requestDTO.getTemplateId());
+
+        // Record rate limiting attempts for user and template
+        rateLimitingService.recordUserNotificationAttempt(requestDTO.getUserId());
+        rateLimitingService.recordTemplateNotificationAttempt(requestDTO.getUserId(), requestDTO.getTemplateId());
 
         // Convert DTO to entity
         Notification notification = convertToEntity(requestDTO);
@@ -124,7 +133,9 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setUserId(dto.getUserId());
         notification.setType(dto.getType());
         notification.setTemplateId(dto.getTemplateId());
-        notification.setTemplateParams(dto.getTemplateParams());
+        notification.setTemplateParams(
+                dto.getTemplateParams() != null ? dto.getTemplateParams() : Collections.emptyMap()
+        );
         notification.setPriority(dto.getPriority());
         notification.setCorrelationId(dto.getCorrelationId());
         notification.setIdempotencyKey(dto.getIdempotencyKey());

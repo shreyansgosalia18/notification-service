@@ -43,6 +43,7 @@ spring:
       email: notification-email-topic
       sms: notification-sms-topic
       push: notification-push-topic
+      dlq: notification-dlq-topic
       partition-count: 3
       replication-factor: 1
     listener:
@@ -81,3 +82,7 @@ notification:
     template:
       max-requests: 2
       time-window: 300  # seconds
+
+app:
+  kafka:
+    dead-letter-topic: ${spring.kafka.topics.dlq}

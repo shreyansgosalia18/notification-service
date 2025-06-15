@@ -53,6 +53,7 @@ public class Notification {
 
     private String errorMessage;
 
+    @Column(unique = true)
     private String idempotencyKey;
 
     @Version
@@ -74,8 +75,13 @@ public class Notification {
     public String getTemplateId() { return templateId; }
     public void setTemplateId(String templateId) { this.templateId = templateId; }
 
-    public Map<String, Object> getTemplateParams() { return templateParams; }
-    public void setTemplateParams(Map<String, Object> templateParams) { this.templateParams = templateParams; }
+    public Map<String, Object> getTemplateParams() {
+        return templateParams == null ? java.util.Collections.emptyMap() : templateParams;
+    }
+
+    public void setTemplateParams(Map<String, Object> templateParams) {
+        this.templateParams = templateParams == null ? java.util.Collections.emptyMap() : templateParams;
+    }
 
     public NotificationPriority getPriority() { return priority; }
     public void setPriority(NotificationPriority priority) { this.priority = priority; }

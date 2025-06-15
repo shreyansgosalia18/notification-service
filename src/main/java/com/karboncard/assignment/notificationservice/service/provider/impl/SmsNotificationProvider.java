@@ -3,6 +3,7 @@ package com.karboncard.assignment.notificationservice.service.provider.impl;
 import com.karboncard.assignment.notificationservice.model.dto.request.NotificationRequestDTO;
 import com.karboncard.assignment.notificationservice.model.entity.Notification;
 import com.karboncard.assignment.notificationservice.model.enums.NotificationPriority;
+import com.karboncard.assignment.notificationservice.model.enums.NotificationStatus;
 import com.karboncard.assignment.notificationservice.model.enums.NotificationType;
 import com.karboncard.assignment.notificationservice.service.KafkaProducerService;
 import com.karboncard.assignment.notificationservice.service.provider.NotificationProvider;
@@ -31,7 +32,10 @@ public class SmsNotificationProvider implements NotificationProvider {
         // Get phone number from templateParams
         Map<String, Object> params = notification.getTemplateParams();
         if (params == null || !params.containsKey("phoneNumber")) {
-            log.error("Missing phone number in templateParams for notification {}", notification.getId());
+            String msg = String.format("Missing phone number in templateParams for notification %s. templateParams: %s", notification.getId(), params);
+            log.error(msg);
+            notification.setStatus(NotificationStatus.PERMANENT_FAILURE);
+            notification.setErrorMessage(msg);
             return false;
         }
 
@@ -39,7 +43,10 @@ public class SmsNotificationProvider implements NotificationProvider {
 
         // Validate phone number
         if (phoneNumber == null || !Pattern.matches(PHONE_NUMBER_REGEX, phoneNumber)) {
-            log.error("Invalid phone number format for notification {}", notification.getId());
+            String msg = String.format("Invalid phone number format for notification %s. Provided: %s", notification.getId(), phoneNumber);
+            log.error(msg);
+            notification.setStatus(NotificationStatus.PERMANENT_FAILURE);
+            notification.setErrorMessage(msg);
             return false;
         }
 
@@ -49,7 +56,6 @@ public class SmsNotificationProvider implements NotificationProvider {
             if (content.length() > SMS_CHARACTER_LIMIT) {
                 log.warn("SMS content exceeds character limit ({} chars), truncating for notification {}",
                         content.length(), notification.getId());
-                // Update the content in templateParams instead of directly on notification
                 params.put("content", content.substring(0, SMS_CHARACTER_LIMIT));
             }
         }
