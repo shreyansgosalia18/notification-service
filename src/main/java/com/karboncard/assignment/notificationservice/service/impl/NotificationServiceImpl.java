@@ -82,8 +82,8 @@ public class NotificationServiceImpl implements NotificationService {
         rateLimitingService.checkTemplateRateLimit(requestDTO.getUserId(), requestDTO.getTemplateId());
 
         // Record rate limiting attempts for user and template
-        rateLimitingService.recordUserNotificationAttempt(requestDTO.getUserId());
-        rateLimitingService.recordTemplateNotificationAttempt(requestDTO.getUserId(), requestDTO.getTemplateId());
+//        rateLimitingService.recordUserNotificationAttempt(requestDTO.getUserId());
+//        rateLimitingService.recordTemplateNotificationAttempt(requestDTO.getUserId(), requestDTO.getTemplateId());
 
         // Convert DTO to entity
         Notification notification = convertToEntity(requestDTO);

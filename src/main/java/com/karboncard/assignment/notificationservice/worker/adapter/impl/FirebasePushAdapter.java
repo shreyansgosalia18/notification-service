@@ -31,11 +31,11 @@ public class FirebasePushAdapter implements ExternalProviderAdapter {
             log.warn("MOCK: deviceToken missing in templateParams, used fallback for notificationId={}", notification.getId());
         }
 
-        // Simulate occasional failure for assignment (10% chance)
-        boolean success = Math.random() > 0.1;
-        if (!success) {
-            log.warn("MOCK: Simulated failure sending Push notification to device {} (notificationId={})", deviceToken, notification.getId());
+        // Deterministic: fail only if "body" is "FAIL"
+        if ("FAIL".equalsIgnoreCase(body)) {
+            log.warn("MOCK: Deterministic failure sending Push notification to device {} (notificationId={})", deviceToken, notification.getId());
+            return false;
         }
-        return success;
+        return true;
     }
 }

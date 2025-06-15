@@ -31,11 +31,11 @@ public class SendGridEmailAdapter implements ExternalProviderAdapter {
             log.warn("MOCK: email missing in templateParams, used userId as fallback for notificationId={}", notification.getId());
         }
 
-        // Simulate occasional failure for assignment (15% chance)
-        boolean success = Math.random() > 0.15;
-        if (!success) {
-            log.warn("MOCK: Simulated failure sending Email to {} (notificationId={})", emailAddress, notification.getId());
+        // Deterministic: fail only if "content" is "FAIL"
+        if ("FAIL".equalsIgnoreCase(content)) {
+            log.warn("MOCK: Deterministic failure sending Email to {} (notificationId={})", emailAddress, notification.getId());
+            return false;
         }
-        return success;
+        return true;
     }
 }

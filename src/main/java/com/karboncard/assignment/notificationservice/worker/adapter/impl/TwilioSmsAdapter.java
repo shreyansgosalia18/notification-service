@@ -27,11 +27,11 @@ public class TwilioSmsAdapter implements ExternalProviderAdapter {
             log.warn("MOCK: phoneNumber missing in templateParams, used userId as fallback for notificationId={}", notification.getId());
         }
 
-        // Simulate occasional failure for assignment (20% chance)
-        boolean success = Math.random() > 0.2;
-        if (!success) {
-            log.warn("MOCK: Simulated failure sending SMS to {} (notificationId={})", phoneNumber, notification.getId());
+        // Deterministic: fail only if message/content is "FAIL"
+        if ("FAIL".equalsIgnoreCase(message)) {
+            log.warn("MOCK: Deterministic failure sending SMS to {} (notificationId={})", phoneNumber, notification.getId());
+            return false;
         }
-        return success;
+        return true;
     }
 }

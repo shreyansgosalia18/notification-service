@@ -74,6 +74,14 @@ public class NotificationController {
                             .message("Missing required field 'email' for EMAIL notification in template_params.")
                             .build());
                 }
+                String email = templateParams.get("email").toString();
+                String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+                if (!java.util.regex.Pattern.matches(EMAIL_REGEX, email)) {
+                    return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                            .success(false)
+                            .message("Invalid email format for EMAIL notification.")
+                            .build());
+                }
                 break;
             case SMS:
                 if (!templateParams.containsKey("phoneNumber") ||
@@ -82,6 +90,14 @@ public class NotificationController {
                     return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
                             .success(false)
                             .message("Missing required field 'phoneNumber' for SMS notification in template_params.")
+                            .build());
+                }
+                String phoneNumber = templateParams.get("phoneNumber").toString();
+                String PHONE_NUMBER_REGEX = "^\\+?[1-9]\\d{1,14}$";
+                if (!java.util.regex.Pattern.matches(PHONE_NUMBER_REGEX, phoneNumber)) {
+                    return ResponseEntity.badRequest().body(NotificationResponseDTO.builder()
+                            .success(false)
+                            .message("Invalid phone number format for SMS notification. Must be E.164 format.")
                             .build());
                 }
                 break;

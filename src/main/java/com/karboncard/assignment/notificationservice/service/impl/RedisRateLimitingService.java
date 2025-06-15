@@ -11,7 +11,6 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class RedisRateLimitingService implements RateLimitingService {
@@ -32,62 +31,59 @@ public class RedisRateLimitingService implements RateLimitingService {
         this.rateLimitConfig = rateLimitConfig;
     }
 
+    // Atomic user rate limit: increments first, checks after
     @Override
     public void checkUserRateLimit(String userId) throws RateLimitExceededException {
         String key = getUserRateKey(userId);
-        Integer count = valueOps.get(key);
-
-        if (count != null && count >= rateLimitConfig.getUserMaxRequests()) {
-            log.warn("Rate limit exceeded for user: {}, count: {}, limit: {}",
+        Long count = valueOps.increment(key);
+        if (count == 1L) {
+            redisTemplate.expire(key, Duration.ofMinutes(rateLimitConfig.getUserTimeWindowMinutes()));
+        }
+        if (count > rateLimitConfig.getUserMaxRequests()) {
+            log.warn("User rate limit exceeded for user: {}, count: {}, limit: {}",
                     userId, count, rateLimitConfig.getUserMaxRequests());
             throw new RateLimitExceededException(
                     String.format("User rate limit exceeded. Maximum %d notifications allowed per %d minutes",
                             rateLimitConfig.getUserMaxRequests(),
-                            rateLimitConfig.getUserTimeWindowMinutes()));
+                            rateLimitConfig.getUserTimeWindowMinutes()),
+                    userId, null, count.intValue(), rateLimitConfig.getUserMaxRequests()
+            );
         }
-
         log.debug("User {} has sent {} notifications in the current time window", userId, count);
     }
 
+    // Atomic template rate limit: increments first, checks after
     @Override
     public void checkTemplateRateLimit(String userId, String templateId) throws RateLimitExceededException {
         String key = getTemplateRateKey(userId, templateId);
-        Integer count = valueOps.get(key);
-
-        if (count != null && count >= rateLimitConfig.getTemplateMaxRequests()) {
+        Long count = valueOps.increment(key);
+        if (count == 1L) {
+            redisTemplate.expire(key, Duration.ofMinutes(rateLimitConfig.getTemplateTimeWindowMinutes()));
+        }
+        if (count > rateLimitConfig.getTemplateMaxRequests()) {
             log.warn("Template rate limit exceeded for user: {}, template: {}, count: {}, limit: {}",
                     userId, templateId, count, rateLimitConfig.getTemplateMaxRequests());
             throw new RateLimitExceededException(
                     String.format("Template rate limit exceeded. Maximum %d '%s' notifications allowed per %d minutes",
                             rateLimitConfig.getTemplateMaxRequests(),
                             templateId,
-                            rateLimitConfig.getTemplateTimeWindowMinutes()));
+                            rateLimitConfig.getTemplateTimeWindowMinutes()),
+                    userId, templateId, count.intValue(), rateLimitConfig.getTemplateMaxRequests()
+            );
         }
-
         log.debug("User {} has sent {} notifications for template {} in the current time window",
                 userId, count, templateId);
     }
 
+    // These methods are now NO-OPs, since atomic check+increment is in the above methods
     @Override
     public void recordUserNotificationAttempt(String userId) {
-        String key = getUserRateKey(userId);
-        incrementOrCreate(key, rateLimitConfig.getUserTimeWindowMinutes());
+        // No longer needed
     }
 
     @Override
     public void recordTemplateNotificationAttempt(String userId, String templateId) {
-        String key = getTemplateRateKey(userId, templateId);
-        incrementOrCreate(key, rateLimitConfig.getTemplateTimeWindowMinutes());
-    }
-
-    private void incrementOrCreate(String key, int expiryMinutes) {
-        Boolean keyExists = redisTemplate.hasKey(key);
-
-        if (Boolean.TRUE.equals(keyExists)) {
-            valueOps.increment(key);
-        } else {
-            valueOps.set(key, 1, Duration.ofMinutes(expiryMinutes));
-        }
+        // No longer needed
     }
 
     private String getUserRateKey(String userId) {
